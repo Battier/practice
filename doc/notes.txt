@@ -1,0 +1,112 @@
+1, setup VNC
+    vncserver -geometry 1900x1000 -depth 24 :1
+2, svn commands
+  2.1, create a private branch
+       command: svn cp http://svn.amd.com/GPG/diag/trunk http://svn.amd.com/GPG/diag/branches/private/your_userid/your_branch_name
+  2.2, switch to move your working copy around branches and back to the trunk.
+       command: svn switch http://svn.amd.com/GPG/diag/branches/private/your_userid/your_branch_name
+  2.3, Keep your branch in sync with the trunk
+       command: svn merge http://svn.amd.com/GPG/diag/trunk
+  2.4, Always do a reintegrate merge back to trunk when your branch work is complete.
+       command: svn merge --reintegrate http://svn.amd.com/GPG/diasvn /branches/private/your_userid/your_branch_name
+  2.5, How to delete svn mergeinfo
+       command: svn propdel svn:mergeinfo -R
+                svn revert .
+                svn ci -m "Removed mergeinfo"
+  2.6, Delete your branch after it’s reintegrated.
+       command: svn delete http://svn.amd.com/GPG/diag/branches/private/your_userid/your_branch_name
+ 
+  2.7 Here is another way to delete all sub tree svn:mergeinfo properties but not at the root folder (this is needed for branching to work properly).
+ 
+  From the root of the project do:
+    svn propdel svn:mergeinfo -R
+    svn revert .
+    svn ci -m "Removed mergeinfo"
+    svn switch --relocate OLD NEW
+    svn st | grep ^? | sed 's/?    //' | xargs svn add
+ 
+3, get system infomations
+  dmidecode -t memory
+  http://blog.sina.com.cn/s/blog_4152a9f50100wh48.html
+ 
+4, Linux command
+   1), rsync
+        rsync -rp fanqi@fanqi-test-pc:/root/workplace/build/release_16_01/ellesmere-x86_64-linux-rel/ .
+   2), nfs
+        vim /etc/export   /build/                  10.237.90.30(rw,sync,no_root_squash)
+        /etc/init.d/nfs-kernel-server restart
+        mount -t nfs -o rw 10.237.90.151:/home/xugong/tonga /home/xugong/tonga/
+   3), find && rm
+        find ./ -name "*.tmp" -exec rm -rf "{}" \;
+                find . -name '*.cpp' -print | xargs  grep 'SMUForcePstate'
+   4), dmidecode
+        dmidecode -t memory
+        http://blog.sina.com.cn/s/blog_4152a9f50100wh48.html
+ 
+   5), uninstall software
+        sudo apt-get --purge remove gimp
+ 
+   6),
+      1, service network restart
+      2, Linux renew ip command
+           $ sudo dhclient -r //release ip
+           $ sudo dhclient //get IP
+  
+   7), vim replace
+      1, :s/\(\w\+\)\s\+\(\w\+\)/\2\t\1 " replace "data1 data2" with "data2 data1"
+ 
+   8), grep -ir 'CONFIG_EFIVAR_FS' /boot/config-$(uname -r)
+ 
+   9), apt-get install texlive-latex-extra
+  
+   10), objdump -s --section .comment binary
+     OR readelf -p .comment binary
+ 
+   11), addr2line -e  a.out  0x4005BDC
+     OR info symbol 0x4005BDC
+   
+   12), get motherboard info under linux
+     # apt-get install lshw
+     # lshw | less
+ 
+   13), git svn
+      a), install git-svn
+          apt-get install git-svn
+      b), init
+          git svn init URL
+      c), checkout the source code from URL
+          git svn clone URL
+          git svn fetch -r XXXX URL
+      d), create a develop branch
+          git svn branch DEV
+      e), dump the commit log
+          git svn log
+      f), commit
+          git svn dcommit
+      g), set ignore file
+          vi .gitignore
+      h), in sync with URL
+          git svn rebase URL
+ 
+    14), Recover deleted files
+          https://www.cyberciti.biz/tips/linux-ext3-ext4-deleted-files-recovery-howto.html
+          http://extundelete.sourceforge.net/
+ 
+    15), Vim config
+          a), http://blog.csdn.net/wooin/article/details/1858917
+          b), Learn Vimscript the Hard Way
+              http://learnvimscriptthehardway.stevelosh.com/
+
+    16), Find out the processes PID that opened TCP port XXXX
+         a), fuser XXXX/tcp
+         b), lsof -i :XXXX
+         c), lsof -i tcp:XXXX
+         d), lsof -i udp:XXXX
+ 
+  5, Redis debugging 
+    1), GDB
+       a), redis-cli info | grep process_id
+       b), gdb <path-to-redis-executable> <pid>
+    2), Monitor, this is a debugging command that streams back every command processed by the Redis server.
+       a), redis-cli monitor #Use SIGINT (ctrl+C) to stop it
+       b), telnet localhost 6379;monitor  #Manually issue the QUIT command to stop it via telnet
