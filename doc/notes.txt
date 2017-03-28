@@ -102,7 +102,27 @@
          b), lsof -i :XXXX
          c), lsof -i tcp:XXXX
          d), lsof -i udp:XXXX
- 
+
+    17), Related to shell
+         a), which shell using
+             echo $0
+             echo $SHELL
+         b), find PID
+             echo $$
+    18), Display the directories total sizes
+         a), du -sh * | sort -h
+         b), df -H
+
+    19), Display the system shutdown entries and run level changes
+         last -x
+
+    20), Adding a Python import permanently
+         echo -e "\nexport PYTHONPATH=\$PYTHONPATH:/path/to/directory" >> ~/.bashrc
+
+    21), How to unpatch a directory/file
+         patch -R file_unpatch < pf.patch
+         patch -R < pf.patch
+          
   5, Redis debugging 
     1), GDB
        a), redis-cli info | grep process_id
