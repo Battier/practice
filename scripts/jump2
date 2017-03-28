@@ -1,0 +1,193 @@
+#! /usr/bin/env perl
+#######################################################
+# Author	: song
+# Date		: 2017/2/7
+#######################################################
+
+use strict;
+use warnings;
+use File::Basename;
+use Data::Dumper;
+use Expect;
+use List::Util qw/max/;
+$| = 1;
+
+my $cmd = basename($0);
+my $usage =<<TXT;
+  $cmd [id|name|x]
+      NULL      : Display the configuration
+      set       : Set the configuration file
+      id        : Login to server with SSH by id
+      name      : Login to server with SSH by name
+      x|X       : Login to server with GUI
+      help		: Display help for this tool
+  Example:
+		1) $cmd 2		# Login to server, server id is 2
+		2) $cmd s98		# Login to server, server name is s98,
+		3) $cmd x		# Login to server, select the server with GUI
+        4) $cmd         # Display the configuration
+  Ctrl+x: Exit server any time
+
+  You should defind the id, name, server IP, SSH port, password in the ~/.jump2rc first.
+Any bugs report to song
+
+TXT
+
+our $g_logdir = undef;
+our $g_rc = {};
+our $g_map = {};
+my ($bf, undef) = split /\./, $cmd, 2;
+our $g_rc_file = "$ENV{HOME}/.${bf}rc";
+
+set(), exit unless -f $g_rc_file;
+
+loadrc();
+
+our $subcmd = shift @ARGV;
+$subcmd = lc($subcmd) if $subcmd;
+if(!defined $subcmd) {
+	showrc();
+} elsif ($subcmd eq 'x') {
+    showx();
+} elsif ($subcmd eq 'help') {
+    die $usage;
+} elsif ($subcmd eq 'set') {
+    set();
+    exit;
+} elsif(defined $g_rc->{$subcmd}) {
+	jump2term($g_rc->{$subcmd});
+} else {
+	die $usage;
+}
+
+##################### functions ######################
+sub loadrc {
+    open my $handle, $g_rc_file or die "Failed to open file $g_rc_file, $!\n";
+    while(<$handle>) {
+    	chomp;
+    	s/#.*//;
+    	if(/^\s*$/) {
+    		next;
+    	} elsif(/^\s*logdir:\s*([\/0-9a-zA-Z_-]+)\s*$/) {
+    		$g_logdir = $1 unless lc($1) eq 'no';
+    	} elsif(/^\s*(\d+)\s+([-\w\.]+)\s+([^:\s]+(?::\d+)?)\s+(\S+\/\S+)\s*(\S*)$/) {
+    		my ($id, $name, $ip_port, $user_pwd, $prompt) = ($1, $2, $3, $4, $5);
+    		my $info = {};
+    		($info->{ip}, $info->{port}) = split /:/, $ip_port, 2;
+            $info->{port} = 22 unless $info->{port};
+            ($info->{user}, $info->{pwd}) = split /\//, $user_pwd, 2;
+            $info->{prompt} = $prompt || '$|#';
+    		$g_rc->{$id} = $info;
+    		$g_rc->{$name} = $info;
+    		$g_map->{$id} = $name;
+    	} else {
+    		die "Bad line: $_\n";
+    	}
+    }
+    close $handle;
+}
+
+sub showrc {
+	$~ = 'TITLE';
+	format TITLE =
+@<<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
+'<ID>','<Name>','<IP:Port>','<User/Password>','Prompt'
+.
+	write;
+	foreach (sort {$a <=> $b} keys %$g_map) {
+		my $id = $_;
+		my $name = $g_map->{$id};
+		my $ip_port = $g_rc->{$id}->{ip}.":".$g_rc->{$id}->{port};
+        my $user_pwd = $g_rc->{$id}->{user}."/******";
+		my $prompt = $g_rc->{$id}->{prompt};
+		$~ = 'VALUE';
+		format VALUE =
+ @<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
+$id, $name, $ip_port, $user_pwd, $prompt
+.
+		write;
+	}
+	print "\n";
+}
+
+sub showx {
+    `which dialog 2>&1`;
+	die("This feature depends on dialog command, pls install it.\n") if $?;
+    my $tmp_file = "/tmp/.${cmd}_$$";
+    my $dcmd = "";
+    $dcmd .= 'dialog --backtitle "Pls Select One to Login" --title "Configuration List" --clear --radiolist "';
+    $dcmd .= "Hi, this is the list of servers. You can choose anyone.\nWhich of the following you want to login?";
+    $dcmd .= '" 19 70 10';
+    my $first = 1;
+    my @allid = sort {$a <=> $b} keys %$g_map;
+    my $max_len = max(map {length($_)} values %$g_map);
+    foreach (@allid) {
+        my $padding_name = $g_map->{$_} . " " x ($max_len - length($g_map->{$_}));
+        $dcmd .= " $_ \"$padding_name $g_rc->{$_}->{ip}\" ";
+        $dcmd .= $first ? "ON" : "off";
+        $first = 0;
+    }
+    $dcmd .= " 2> $tmp_file";
+    system($dcmd);
+    unlink($tmp_file), die("\nAbort.\n") if $?;
+    open my $dia, $tmp_file or die "Failed to open dialog file, $!\n";
+    chomp(my $num = <$dia>);
+    close $dia;
+    unlink($tmp_file);
+    my $tid = $allid[$num - 1];
+    jump2term($g_rc->{$tid});
+}
+
+sub jump2term {
+    my ($info) = @_;
+    my @term = ('-p', $info->{port}, $info->{user}.'@'.$info->{ip});
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+	my $ts = sprintf("%04i%02i%02i-%02i%02i%02i", $year+1900, $mon+1, $mday, $hour, $min, $sec);
+    print '*' x 20 . ' Start to jump to server: ' . $info->{ip} . " " . '*' x 20 . "\n";
+	my $sid = Expect->spawn('ssh', @term) or die "Failed to spawn, $!\n";
+    print "Command: ssh @term\n";
+	my $logname = $g_map->{$subcmd} ? $g_map->{$subcmd} : $subcmd;
+	my $log = "";
+	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
+	$sid->expect(10,
+		['-re', 'yes/no', sub {$sid->send_slow(1, "yes\r");}],
+		['eof', sub {
+			$sid->hard_close();
+            print "SSH failed\n";
+			exit;
+		}],
+		['timeout', sub {
+			$sid->hard_close();
+            print "SSH timeout\n";
+			exit;
+		}],
+		['-re', 'Connection refused', sub {
+			$sid->hard_close();
+            print "Connection refused\n";
+			exit;
+		}],
+		['-re', 'password: ', sub {
+			$sid->send_slow(0.02, $info->{pwd}."\r");
+            exp_continue;
+		}],
+		['-re', $info->{prompt}, sub {}],
+	);
+	$sid->interact(\*STDIN, "\cx");
+	print "\nExit.\n";
+    print "$log\n" if $g_logdir;
+}
+
+sub set {
+    my $default =<<TXT;
+logdir:no
+# <ID>  <Name>  <IP:Port>               <User:Password>     <Prompt>
+# 1      srv1  1.1.1.1:222              user1/password1     
+# 2      srv2  2.2.2.2:333              user2/password2     >
+TXT
+    unless(-f $g_rc_file) {
+        open my $fh, ">$g_rc_file" or die "Failed to init configration file, $!\n";
+        print $fh "$default";
+        close $fh;
+    }
+    system("vim $g_rc_file");
+}
