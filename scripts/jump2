@@ -34,6 +34,7 @@ Any bugs report to song
 TXT
 
 our $g_logdir = undef;
+our $g_logclean = undef;
 our $g_rc = {};
 our $g_map = {};
 my ($bf, undef) = split /\./, $cmd, 2;
@@ -70,6 +71,8 @@ sub loadrc {
     		next;
     	} elsif(/^\s*logdir:\s*([\/0-9a-zA-Z_-]+)\s*$/) {
     		$g_logdir = $1 unless lc($1) eq 'no';
+    	} elsif(/^\s*logclean:\s*([\/0-9a-zA-Z_-]+)\s*$/) {
+    		$g_logclean = $1 unless lc($1) eq 'no';
     	} elsif(/^\s*(\d+)\s+([-\w\.]+)\s+([^:\s]+(?::\d+)?)\s+(\S+\/\S+)\s*(\S*)$/) {
     		my ($id, $name, $ip_port, $user_pwd, $prompt) = ($1, $2, $3, $4, $5);
     		my $info = {};
@@ -138,6 +141,13 @@ sub showx {
     jump2term($g_rc->{$tid});
 }
 
+sub cleanlog {
+    my ($file) = @_;
+    my $cmd = "sed -i 's|\x1b\[[;0-9]*m||g' $file; sed -i 's|
+||g' $file; sed -i 's|||g' $file";
+    system($cmd);
+}
+
 sub jump2term {
     my ($info) = @_;
     my @term = ('-p', $info->{port}, $info->{user}.'@'.$info->{ip});
@@ -149,6 +159,7 @@ sub jump2term {
 	my $logname = $g_map->{$subcmd} ? $g_map->{$subcmd} : $subcmd;
 	my $log = "";
 	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
+    print "$log\n" if $g_logdir;
 	$sid->expect(10,
 		['-re', 'yes/no', sub {$sid->send_slow(1, "yes\r");}],
 		['eof', sub {
@@ -166,7 +177,7 @@ sub jump2term {
             print "Connection refused\n";
 			exit;
 		}],
-		['-re', 'password: ', sub {
+		['-re', "(password|Password)", sub {
 			$sid->send_slow(0.02, $info->{pwd}."\r");
             exp_continue;
 		}],
@@ -175,11 +186,17 @@ sub jump2term {
 	$sid->interact(\*STDIN, "\cx");
 	print "\nExit.\n";
     print "$log\n" if $g_logdir;
+    
+    # Remove all escape codes from log. 
+    # AnsiEsc.vim is also allow you to view ANSI colours through escape codes.
+    # http://www.vim.org/scripts/script.php?script_id=302
+    cleanlog($log) if $g_logclean;
 }
 
 sub set {
     my $default =<<TXT;
 logdir:no
+#logclean:no
 # <ID>  <Name>  <IP:Port>               <User:Password>     <Prompt>
 # 1      srv1  1.1.1.1:222              user1/password1     
 # 2      srv2  2.2.2.2:333              user2/password2     >
