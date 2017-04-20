@@ -1,8 +1,9 @@
 #! /usr/bin/env perl
 #######################################################
-# Author	: song
+# Author	: Song
 # Date		: 2017/2/7
 #######################################################
+
 
 use strict;
 use warnings;
@@ -14,22 +15,26 @@ $| = 1;
 
 my $cmd = basename($0);
 my $usage =<<TXT;
-  $cmd [id|name|x]
-      NULL      : Display the configuration
+  $cmd [set|id|name|x] [subcmd] 
+      show      : Display the configuration
       set       : Set the configuration file
-      id        : Login to server with SSH by id
-      name      : Login to server with SSH by name
+      id        : Login to server by id
+      name      : Login to server by name
       x|X       : Login to server with GUI
       help		: Display help for this tool
+	  subcmd	: Sub-command
+	       power	: Select to telnet to Power Cycler
+	       ssh  	: Select to ssh to server
+	       telnet 	: Select to telnet to server
   Example:
-		1) $cmd 2		# Login to server, server id is 2
+		1) $cmd 2 ssh	# Login to server via ssh, server id is 2
 		2) $cmd s98		# Login to server, server name is s98,
 		3) $cmd x		# Login to server, select the server with GUI
         4) $cmd         # Display the configuration
   Ctrl+x: Exit server any time
 
   You should defind the id, name, server IP, SSH port, password in the ~/.jump2rc first.
-Any bugs report to song
+Any bugs report to Song.
 
 TXT
 
@@ -44,19 +49,22 @@ set(), exit unless -f $g_rc_file;
 
 loadrc();
 
-our $subcmd = shift @ARGV;
-$subcmd = lc($subcmd) if $subcmd;
-if(!defined $subcmd) {
-	showrc();
-} elsif ($subcmd eq 'x') {
+my ($opt1, $opt2) = @ARGV;
+$opt1 = lc($opt1) if $opt1;
+$opt2 = lc($opt2) if $opt2;
+if(!defined $opt1) {
+	die $usage;
+} elsif ($opt1 eq 'show') {
+    showrc();
+}elsif ($opt1 eq 'x') {
     showx();
-} elsif ($subcmd eq 'help') {
+} elsif ($opt1 eq 'help') {
     die $usage;
-} elsif ($subcmd eq 'set') {
+} elsif ($opt1 eq 'set') {
     set();
     exit;
-} elsif(defined $g_rc->{$subcmd}) {
-	jump2term($g_rc->{$subcmd});
+} elsif(defined $g_rc->{$opt1}) {
+	jump2server($g_rc->{$opt1});
 } else {
 	die $usage;
 }
@@ -73,12 +81,16 @@ sub loadrc {
     		$g_logdir = $1 unless lc($1) eq 'no';
     	} elsif(/^\s*logclean:\s*([\/0-9a-zA-Z_-]+)\s*$/) {
     		$g_logclean = $1 unless lc($1) eq 'no';
-    	} elsif(/^\s*(\d+)\s+([-\w\.]+)\s+([^:\s]+(?::\d+)?)\s+(\S+\/\S+)\s*(\S*)$/) {
-    		my ($id, $name, $ip_port, $user_pwd, $prompt) = ($1, $2, $3, $4, $5);
+    	}elsif(/^\s*(\d+)\s+([-_\w\d\.]+)\s+([\d\w:\/\.]+)\s+([\d\w:\/\.]+)\s+([\d\w:\/\.]+)\s*(\S*)\s*$/) {
+    		my ($id, $name, $ssh_info, $telnet_info, $power_info, $prompt) = ($1, $2, $3, $4, $5, $6);
     		my $info = {};
-    		($info->{ip}, $info->{port}) = split /:/, $ip_port, 2;
-            $info->{port} = 22 unless $info->{port};
-            ($info->{user}, $info->{pwd}) = split /\//, $user_pwd, 2;
+    		($info->{s_ip}, $info->{s_user}, $info->{s_pwd}) = split /[\/:]/, $ssh_info;
+            ($info->{t_ip}, $info->{t_port}) = split /:/, $telnet_info, 2;
+            my ($p_ip, $p_up) = split /\//, $power_info;
+            my @p_ip = ();
+            @p_ip = split /:/, $p_ip if $p_ip ne 'none';
+            $info->{'p_ip'} = \@p_ip;
+            ($info->{'p_user'}, $info->{'p_pwd'}) = split /:/, $p_up if $p_ip ne 'none';
             $info->{prompt} = $prompt || '$|#';
     		$g_rc->{$id} = $info;
     		$g_rc->{$name} = $info;
@@ -93,20 +105,21 @@ sub loadrc {
 sub showrc {
 	$~ = 'TITLE';
 	format TITLE =
-@<<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
-'<ID>','<Name>','<IP:Port>','<User/Password>','Prompt'
+@<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
+'<ID>','<Name>','<ssh info>','<telnet info>','<power cycle info>','Prompt'
 .
 	write;
 	foreach (sort {$a <=> $b} keys %$g_map) {
 		my $id = $_;
 		my $name = $g_map->{$id};
-		my $ip_port = $g_rc->{$id}->{ip}.":".$g_rc->{$id}->{port};
-        my $user_pwd = $g_rc->{$id}->{user}."/******";
+		my $ssh_info = $g_rc->{$id}->{s_ip}."/".$g_rc->{$id}->{s_user}.":".$g_rc->{$id}->{s_pwd};
+        my $telnet_info = $g_rc->{$id}->{t_ip}.":".$g_rc->{$id}->{t_port};
+		my $power_info = @{$g_rc->{$id}->{p_ip}} ? join(':', @{$g_rc->{$id}->{p_ip}}) : 'none';
 		my $prompt = $g_rc->{$id}->{prompt};
 		$~ = 'VALUE';
 		format VALUE =
- @<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
-$id, $name, $ip_port, $user_pwd, $prompt
+@<<<< @<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<
+$id, $name, $ssh_info, $telnet_info, $power_info, $prompt
 .
 		write;
 	}
@@ -119,14 +132,14 @@ sub showx {
     my $tmp_file = "/tmp/.${cmd}_$$";
     my $dcmd = "";
     $dcmd .= 'dialog --backtitle "Pls Select One to Login" --title "Configuration List" --clear --radiolist "';
-    $dcmd .= "Hi, this is the list of servers. You can choose anyone.\nWhich of the following you want to login?";
+    $dcmd .= "Dear, this is the list of servers. You can choose anyone.\nWhich of the following you want to login?";
     $dcmd .= '" 19 70 10';
     my $first = 1;
     my @allid = sort {$a <=> $b} keys %$g_map;
     my $max_len = max(map {length($_)} values %$g_map);
     foreach (@allid) {
         my $padding_name = $g_map->{$_} . " " x ($max_len - length($g_map->{$_}));
-        $dcmd .= " $_ \"$padding_name $g_rc->{$_}->{ip}\" ";
+        $dcmd .= " $_ \"$padding_name ssh:$g_rc->{$_}->{s_ip} telnet:$g_rc->{$_}->{t_ip}:$g_rc->{$_}->{t_port}\" ";
         $dcmd .= $first ? "ON" : "off";
         $first = 0;
     }
@@ -138,7 +151,21 @@ sub showx {
     close $dia;
     unlink($tmp_file);
     my $tid = $allid[$num - 1];
-    jump2term($g_rc->{$tid});
+    jump2server($g_rc->{$tid});
+}
+
+sub jump2server {
+    if (!defined $opt2) {
+        jumpViaSsh(@_);
+    } elsif ($opt2 eq 'ssh') {
+        jumpViaSsh(@_);
+    } elsif ($opt2 eq 'telnet') {
+        jumpViaTelnet(@_);
+    }  elsif ($opt2 eq 'power') {
+        powerCycle(@_);
+    } else {
+        die $usage;
+    }
 }
 
 sub cleanlog {
@@ -148,18 +175,18 @@ sub cleanlog {
     system($cmd);
 }
 
-sub jump2term {
+sub jumpViaSsh {
     my ($info) = @_;
-    my @term = ('-p', $info->{port}, $info->{user}.'@'.$info->{ip});
+    my @term = ('-p', 22, $info->{s_user}.'@'.$info->{s_ip});
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
 	my $ts = sprintf("%04i%02i%02i-%02i%02i%02i", $year+1900, $mon+1, $mday, $hour, $min, $sec);
-    print '*' x 20 . ' Start to jump to server: ' . $info->{ip} . " " . '*' x 20 . "\n";
+    print '*' x 20 . ' Start to jump to server via ssh: ' . $info->{s_ip} . " " . '*' x 20 . "\n";
 	my $sid = Expect->spawn('ssh', @term) or die "Failed to spawn, $!\n";
     print "Command: ssh @term\n";
-	my $logname = $g_map->{$subcmd} ? $g_map->{$subcmd} : $subcmd;
+	my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
 	my $log = "";
 	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
-    print "$log\n" if $g_logdir;
+    print "Log: $log\n" if $g_logdir;
 	$sid->expect(10,
 		['-re', 'yes/no', sub {$sid->send_slow(1, "yes\r");}],
 		['eof', sub {
@@ -177,29 +204,98 @@ sub jump2term {
             print "Connection refused\n";
 			exit;
 		}],
-		['-re', "(password|Password)", sub {
-			$sid->send_slow(0.02, $info->{pwd}."\r");
+		['-re', 'password: ', sub {
+			$sid->send_slow(0.02, $info->{s_pwd}."\r");
             exp_continue;
 		}],
 		['-re', $info->{prompt}, sub {}],
 	);
 	$sid->interact(\*STDIN, "\cx");
 	print "\nExit.\n";
-    print "$log\n" if $g_logdir;
-    
+    print "Log: $log\n" if $g_logdir;
+
     # Remove all escape codes from log. 
     # AnsiEsc.vim is also allow you to view ANSI colours through escape codes.
     # http://www.vim.org/scripts/script.php?script_id=302
-    cleanlog($log) if $g_logclean;
+    cleanlog($log) if $g_logclean && $g_logdir;
+}
+
+sub jumpViaTelnet {
+    my ($info) = @_;
+	my @term = ($info->{t_ip}, $info->{t_port});
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    print '*' x 20 . ' Start to jump to server via telnet: ' . $info->{s_ip} . " " . '*' x 20 . "\n";
+	my $ts = sprintf("%04i-%02i-%02i-%02i-%02i-%02i-%s",$year+1900, $mon+1, $mday, $hour, $min, $sec, $ENV{USER});
+	my $sid = Expect->spawn('telnet', @term) or die "Failed to spawn, $!\n";
+	my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
+	my $log = "";
+	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
+    print "Log: $log\n" if $g_logdir;
+	$sid->expect(10,
+		['-re', 'Escape character is', sub {$sid->send_slow(1, "\r");}],
+		['-re', 'Connection refused' , sub {
+			$sid->hard_close();
+			ClearLine($info->{t_ip}, $info->{t_port}, $info->{t_user}, $info->{t_pwd});
+			exit;
+		}],
+		['eof', sub {
+			$sid->hard_close();
+			ClearLine($info->{t_ip}, $info->{t_port}, $info->{t_user}, $info->{t_pwd});
+			exit;
+		}],
+		['timeout', sub {
+			$sid->hard_close();
+			ClearLine($info->{t_ip}, $info->{t_port}, $info->{t_user}, $info->{t_pwd});
+			exit;
+		}],
+	);
+	$sid->expect(3,
+		['-re', 'Username: ', sub {
+			$sid->send_slow(0.02, "$ENV{USER}\r");
+			sleep 1;
+			$sid->send_slow(0.02, "\r");
+		}],
+	);
+	$sid->interact(\*STDIN, "\cx");
+	print "\nExit \n";
+    print "Log: $log\n" if $g_logdir;
+	#$sid->soft_close();
+	$sid->hard_close();
+    cleanlog($log) if $g_logclean && $g_logdir;
+}
+
+
+sub powerCycle {
+    my ($info) = @_;
+    ClearLine($info->{p_ip}, $info->{p_port}, $info->{p_user}, $info->{p_pwd});
+}
+
+sub ClearLine {
+	my ($ip, $port, $user, $pwd) = @_;
+	my $line = $port - 2000;
+	print "\nJump to terminal port failed.\nDo you want to reset this terminal port? (yes/no): ";
+	chomp(my $res = <stdin>);
+	die("Abort.\n"), return if($res ne 'yes');
+	my $sid = Expect->spawn('telnet', $ip) or die "Failed to spawn, $!\n";;
+	$sid->expect(10,
+		['-re', 'Username: ', sub {$sid->send_slow(0.01, "$user\r");exp_continue;}],
+		['-re', 'Password: ', sub {$sid->send_slow(0.01, "$pwd\r");exp_continue;}],
+		['-re', 'Selection: ', sub {$sid->send_slow(0.01, "x\r");exp_continue;}],
+		['-re', '.*>', sub {$sid->send_slow(0.01, "en\r");exp_continue;}],
+		['-re', 'confirm', sub {$sid->send_slow(0.01, "\r");print "\n";}],
+		['-re', '.*#', sub {$sid->send_slow(0.01, "clear line $line\r");exp_continue;}],
+		['timeout', sub {die "Failed to reset terminal server, timeout\n";}]
+	);
+	$sid->hard_close();
 }
 
 sub set {
     my $default =<<TXT;
 logdir:no
 #logclean:no
-# <ID>  <Name>  <IP:Port>               <User:Password>     <Prompt>
-# 1      srv1  1.1.1.1:222              user1/password1     
-# 2      srv2  2.2.2.2:333              user2/password2     >
+# <ID>   <Name>     <IP/User:Password>       <Ternimal>       <Power Cycle>                            <Prompt>
+# 0-9  a-zA-Z.-_  address/user:password    address:port  none or address[:port]/username:password       $ , #
+# 1      TGIF       1.1.1.1/god:22         1.1.1.1:1111     1.1.1.1:1111/god:god                          #
 TXT
     unless(-f $g_rc_file) {
         open my $fh, ">$g_rc_file" or die "Failed to init configration file, $!\n";
