@@ -4,13 +4,16 @@
 # Date		: 2017/2/7
 #######################################################
 
-
 use strict;
 use warnings;
 use File::Basename;
 use Data::Dumper;
 use Expect;
 use List::Util qw/max/;
+use MIME::Lite;
+#use diagnostics;
+
+#Forces a flush right away and after every write or print on the current selecetd output channel.
 $| = 1;
 
 my $cmd = basename($0);
@@ -34,11 +37,12 @@ my $usage =<<TXT;
   Ctrl+x: Exit server any time
 
   You should defind the id, name, server IP, SSH port, password in the ~/.jump2rc first.
-Any bugs report to Song.
+Any bugs report to Song
 
 TXT
 
 our $g_logdir = undef;
+our $g_sendemail = undef;
 our $g_logclean = undef;
 our $g_rc = {};
 our $g_map = {};
@@ -85,7 +89,7 @@ sub loadrc {
     		my ($id, $name, $ssh_info, $telnet_info, $power_info, $prompt) = ($1, $2, $3, $4, $5, $6);
     		my $info = {};
     		($info->{s_ip}, $info->{s_user}, $info->{s_pwd}) = split /[\/:]/, $ssh_info;
-            ($info->{t_ip}, $info->{t_port}) = split /:/, $telnet_info, 2;
+            ($info->{t_ip}, $info->{t_port}, $info->{t_user}, $info->{t_pwd}) = split /[\/:]/, $telnet_info;
             my ($p_ip, $p_up) = split /\//, $power_info;
             my @p_ip = ();
             @p_ip = split /:/, $p_ip if $p_ip ne 'none';
@@ -132,7 +136,7 @@ sub showx {
     my $tmp_file = "/tmp/.${cmd}_$$";
     my $dcmd = "";
     $dcmd .= 'dialog --backtitle "Pls Select One to Login" --title "Configuration List" --clear --radiolist "';
-    $dcmd .= "Dear, this is the list of servers. You can choose anyone.\nWhich of the following you want to login?";
+    $dcmd .= "Dear, this is the list of servers. You can choose one.\nWhich of the following you want to login?";
     $dcmd .= '" 19 70 10';
     my $first = 1;
     my @allid = sort {$a <=> $b} keys %$g_map;
@@ -168,7 +172,14 @@ sub jump2server {
     }
 }
 
-sub cleanlog {
+sub setTermTitle {
+    my ($tool, $name) = @_;
+    #Set Terminal title
+    my $cmd = "echo -en '\033]0\;$tool ':' $name\a'"; 
+    system($cmd);
+}
+
+sub cleanLog {
     my ($file) = @_;
     my $cmd = "sed -i 's|\x1b\[[;0-9]*m||g' $file; sed -i 's|
 ||g' $file; sed -i 's|||g' $file";
@@ -178,16 +189,17 @@ sub cleanlog {
 sub jumpViaSsh {
     my ($info) = @_;
     my @term = ('-p', 22, $info->{s_user}.'@'.$info->{s_ip});
-	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
-	my $ts = sprintf("%04i%02i%02i-%02i%02i%02i", $year+1900, $mon+1, $mday, $hour, $min, $sec);
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    my $ts = sprintf("%04i%02i%02i-%02i%02i%02i-%s", $year+1900, $mon+1, $mday, $hour, $min, $sec, $ENV{USER});
     print '*' x 20 . ' Start to jump to server via ssh: ' . $info->{s_ip} . " " . '*' x 20 . "\n";
-	my $sid = Expect->spawn('ssh', @term) or die "Failed to spawn, $!\n";
+    my $sid = Expect->spawn('ssh', @term) or die "Failed to spawn, $!\n";
     print "Command: ssh @term\n";
-	my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
-	my $log = "";
-	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
+    my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
+    setTermTitle("ssh", $logname);
+    my $log = "";
+    $log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
     print "Log: $log\n" if $g_logdir;
-	$sid->expect(10,
+    $sid->expect(10,
 		['-re', 'yes/no', sub {$sid->send_slow(1, "yes\r");}],
 		['eof', sub {
 			$sid->hard_close();
@@ -214,24 +226,27 @@ sub jumpViaSsh {
 	print "\nExit.\n";
     print "Log: $log\n" if $g_logdir;
 
+    setTermTitle("jump2", "End");
     # Remove all escape codes from log. 
     # AnsiEsc.vim is also allow you to view ANSI colours through escape codes.
     # http://www.vim.org/scripts/script.php?script_id=302
-    cleanlog($log) if $g_logclean && $g_logdir;
+    cleanLog($log) if $g_logclean && $g_logdir;
+    sendEmail($info->{s_ip}, $log, "$cmd-$logname-$ts.log") if $g_sendemail && $g_logdir;
 }
 
 sub jumpViaTelnet {
     my ($info) = @_;
-	my @term = ($info->{t_ip}, $info->{t_port});
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
-    print '*' x 20 . ' Start to jump to server via telnet: ' . $info->{s_ip} . " " . '*' x 20 . "\n";
-	my $ts = sprintf("%04i-%02i-%02i-%02i-%02i-%02i-%s",$year+1900, $mon+1, $mday, $hour, $min, $sec, $ENV{USER});
-	my $sid = Expect->spawn('telnet', @term) or die "Failed to spawn, $!\n";
-	my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
-	my $log = "";
-	$log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
+    my @term = ($info->{t_ip}, $info->{t_port});
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    print '*' x 20 . ' Start to jump to server via telnet: ' . $info->{t_ip} . " " . '*' x 20 . "\n";
+    my $ts = sprintf("%04i%02i%02i-%02i%02i%02i-%s", $year+1900, $mon+1, $mday, $hour, $min, $sec, $ENV{USER});
+    my $sid = Expect->spawn('telnet', @term) or die "Failed to spawn, $!\n";
+    my $logname = $g_map->{$opt1} ? $g_map->{$opt1} : $opt1;
+    setTermTitle("telnet", $logname);
+    my $log = "";
+    $log = "$g_logdir/$cmd-$logname-$ts.log", $sid->log_file($log) if defined $g_logdir;
     print "Log: $log\n" if $g_logdir;
-	$sid->expect(10,
+    $sid->expect(10,
 		['-re', 'Escape character is', sub {$sid->send_slow(1, "\r");}],
 		['-re', 'Connection refused' , sub {
 			$sid->hard_close();
@@ -261,7 +276,9 @@ sub jumpViaTelnet {
     print "Log: $log\n" if $g_logdir;
 	#$sid->soft_close();
 	$sid->hard_close();
-    cleanlog($log) if $g_logclean && $g_logdir;
+    setTermTitle("jump2", "End");
+    cleanLog($log) if $g_logclean && $g_logdir;
+    sendEmail($info->{t_ip}, $log, "$cmd-$logname-$ts.log") if $g_sendemail && $g_logdir;
 }
 
 
@@ -291,11 +308,11 @@ sub ClearLine {
 
 sub set {
     my $default =<<TXT;
-logdir:no
+#logdir:no
 #logclean:no
-# <ID>   <Name>     <IP/User:Password>       <Ternimal>       <Power Cycle>                            <Prompt>
-# 0-9  a-zA-Z.-_  address/user:password    address:port  none or address[:port]/username:password       $ , #
-# 1      TGIF       1.1.1.1/god:22         1.1.1.1:1111     1.1.1.1:1111/god:god                          #
+# <ID>   <Name>   <IP/User:Password>       <Ternimal>            <Power Cycle>               <Prompt>
+# 0-9	a-zA-Z.-_	addr/user:pwd      addr:port/user:pwd  	 none or addr[:port]/user:pwd     \$ , #
+# 1       TGIF     1.1.1.1/god:22        1.1.1.1:1111          1.1.1.1:1111/god:god            
 TXT
     unless(-f $g_rc_file) {
         open my $fh, ">$g_rc_file" or die "Failed to init configration file, $!\n";
@@ -303,4 +320,34 @@ TXT
         close $fh;
     }
     system("vim $g_rc_file");
+}
+
+sub sendEmail {
+	my ($ip, $log, $file) = @_;
+    my $test_result = qx(grep -i \'run\\\|start\\\|passed\\\|error\\\|failed\' $log);
+    my $to = "$ENV{USER}\@gmail.com";
+    my $cc = "$ENV{USER}\@gmail.com";
+    my $from = "$ENV{USER}\@gmail.com";
+    my $subject = "Test Log for $ip";
+	my $message = sprintf("%s %s", "Dear,\n!!!This email is sent 
+          by Perl Script!!!\nThe test result as follow:\n", $test_result);
+
+    my $msg = MIME::Lite->new(
+                            From     => $from,
+                            To       => $to,
+                            Cc       => $cc,
+                            Subject  => $subject,
+                            Type     => 'multipart/mixed'
+    );
+
+    $msg->attach(Type         => 'text',
+                 Data         => $message
+    );
+
+    $msg->attach(Type        => 'log',
+                 Path        => $log,
+                 Filename    => $file,
+                 Disposition => 'attachment'
+    );       
+    $msg->send;
 }
