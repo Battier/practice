@@ -1,0 +1,3 @@
+[submodule "scripts/python/lib/rpyc"]
+	path = scripts/python/lib/rpyc
+	url = https://github.com/tomerfiliba/rpyc.git
