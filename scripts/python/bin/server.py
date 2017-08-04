@@ -34,10 +34,10 @@ class GuestToken(rpyc.Service):
         self.stale = True
         self.callback = None
 
-    def exposed_put_task(self, priority):
+    def exposed_put_task(self, setup):
         'Put a new task'
         db = tasks.get_task_db()
-        db.push(priority, self.name)
+        db.push(setup, self.name)
         return True
 
     def exposed_refresh(self):
@@ -64,10 +64,10 @@ class RootToken(GuestToken):
         print "* Hello Admin %s *" % self.name
         tokens.add(self)
 
-    def exposed_remove_task(self, priority, task_index):
+    def exposed_remove_task(self, setup, task_index):
         'Remove a task'
         db = tasks.get_task_db()
-        db.pop(priority, index)
+        db.pop(setup, index)
 
 class MyService(rpyc.Service):
     'Define all services for server'
