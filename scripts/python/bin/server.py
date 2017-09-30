@@ -4,10 +4,11 @@
 import sys
 import os
 
-sys.path.append("../lib/rpyc")
-sys.path.append("../lib")
 import rpyc
 from rpyc.utils.server import ThreadedServer
+
+HOME = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+sys.path.insert(0, os.path.join(HOME, 'lib'))
 import log
 import tasks
 

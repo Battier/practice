@@ -3,7 +3,6 @@
 
 import sys
 import os
-sys.path.append("../lib/rpyc")
 import rpyc
 
 if __name__ == "__main__":
