@@ -1,4 +1,5 @@
 #!/bin/tclsh
+source "./redis.tcl"
 
 set ::tcl_interactive 1
 
@@ -33,6 +34,11 @@ proc set_prompt {} {
              return $::pathColor
          } 
     }
+}
+
+set g_redis [redis 127.0.0.1 6379]
+proc redis_get_keys { PATTERN } {
+    $::g_redis KEYS $PATTERN
 }
 
 if {$tcl_interactive} {
