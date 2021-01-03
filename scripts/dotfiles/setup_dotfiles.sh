@@ -2,12 +2,25 @@
 USERNAME='default'
 PASSWORD='123'
 _V=0
+setup_vim=0
 
-while getopts "vp:u:" OPTION
+while getopts "Vvp:u:" OPTION
 do
     case $OPTION in
         v)
-	    _V=1
+            _V=1
+            ;;
+
+        p)
+            PASSWORD=$OPTARG
+            ;;
+
+        u)
+            USERNAME=$OPTARG
+            ;;
+
+        V)
+            setup_vim=1
             ;;
 
         \? )
@@ -68,4 +81,12 @@ SUDO apt-get install -y openvswitch-switch
 SUDO curl -L https://github.com/openvswitch/ovs/raw/master/utilities/ovs-docker -o /usr/bin/ovs-docker
 SUDO chmod a+x /usr/bin/ovs-docker
 
+if [ $setup_vim -eq 1 ]; then
+    echo "Setup VIM Config"
+    git clone --depth=1 https://github.com/Battier/vimrc.git ~/.vim_runtime
+    cd ~/.vim_runtime
+    python update_plugins.py
+    cp ./vim/plugin/my_configs.vim ~/.vim_runtime/my_configs.vim
+    sh ~/.vim_runtime/install_awesome_vimrc.sh
+fi
 echo "Done"
