@@ -47,11 +47,15 @@ SUDO ()
 
 SUDO "apt update"
 SUDO "apt upgrade"
-SUDO "apt -y install vim vim-gtk3 gitk python2 python3 net-tools make gcc"
+SUDO "apt -y install vim vim-gtk3 gitk python2 python3 net-tools make gcc cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager"
 SUDO update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 SUDO add-apt-repository universe
 SUDO apt-get update
 SUDO apt -y install python2
+SUDO systemctl is-active libvirtd
+SUDO usermod -aG libvirt $USER
+SUDO usermod -aG kvm $USER
+
 
 curl https://bootstrap.pypa.io/get-pip.py --output ~/get-pip.py
 SUDO python2 ~/get-pip.py
@@ -80,13 +84,19 @@ SUDO apt-get -y install docker-ce docker-ce-cli containerd.io
 SUDO apt-get install -y openvswitch-switch
 SUDO curl -L https://github.com/openvswitch/ovs/raw/master/utilities/ovs-docker -o /usr/bin/ovs-docker
 SUDO chmod a+x /usr/bin/ovs-docker
+SUDO groupadd docker
+SUDO usermod -aG docker $USER
+SUDO newgrp docker
+SUDO chown "$USER":"$USER" /home/"$USER"/.docker -R
+SUDO chmod g+rwx "$HOME/.docker" -R
+SUDO systemctl enable docker
 
 if [ $setup_vim -eq 1 ]; then
     echo "Setup VIM Config"
     git clone --depth=1 https://github.com/Battier/vimrc.git ~/.vim_runtime
+    cp ./vim/plugin/my_configs.vim ~/.vim_runtime/my_configs.vim
     cd ~/.vim_runtime
     python update_plugins.py
-    cp ./vim/plugin/my_configs.vim ~/.vim_runtime/my_configs.vim
     sh ~/.vim_runtime/install_awesome_vimrc.sh
 fi
 echo "Done"
