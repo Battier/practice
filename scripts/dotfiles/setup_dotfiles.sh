@@ -47,7 +47,7 @@ SUDO ()
 
 SUDO "apt update"
 SUDO "apt upgrade"
-SUDO "apt -y install vim vim-gtk3 gitk python2 python3 net-tools make gcc curl cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager"
+SUDO "apt -y install vim vim-gtk3 gitk python2 python3 net-tools make gcc curl cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager openssh-client openssh-server"
 SUDO update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 SUDO add-apt-repository universe
 SUDO apt-get update
