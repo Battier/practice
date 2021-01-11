@@ -73,24 +73,24 @@ All testbed configuration steps and tests are run from a `sonic-mgmt` docker con
 2. Run the `setup-container.sh` in the root directory of the sonic-mgmt repository:
 ```
     $ cd ~/sonic-mgmt
-    $ mkdir ~/data
-    $ ./setup-container.sh -n <container name> -d ~/data
+    $ mkdir /data
+    $ ./setup-container.sh -n falu-vs -d /data
 ```
 3. From now on, **all steps are running inside the sonic-mgmt docker**, unless otherwise specified.
 You can enter your sonic-mgmt container with the following command:
 ```
-    $ docker exec -it <container name> bash
+    $ docker exec -it falu-vs bash
 ```
-You will find your `sonic-mgmt` directory mounted at `~/data/sonic-mgmt`:
+You will find your `sonic-mgmt` directory mounted at `/data/sonic-mgmt`:
 ```
-    $ ls ~/data/sonic-mgmt/
+    $ ls /data/sonic-mgmt/
     LICENSE  README.md  __pycache__  ansible  docs	lgtm.yml  setup-container.sh  spytest  test_reporting  tests
 ```
 ## 9. Setup host public key in sonic-mgmt docker
 In order to configure the testbed on your host automatically, Ansible needs to be able to SSH into it without a password prompt. The `setup-container` script from the previous step will setup all the necessary SSH keys for you, but there are a few more modifications needed to make Ansible work:
 1. Modify `veos_vtb` to use the user name (e.g. `foo`) you want to use to login to the host machine (this can be your username on the host)
 ```
-    falu@sonic:~/data/sonic-mgmt/ansible$ git diff
+    falu@sonic:/data/sonic-mgmt/ansible$ git diff
     index be33f9f3..f3b37d41 100644
     --- a/ansible/veos_vtb
     +++ b/ansible/veos_vtb
@@ -116,24 +116,32 @@ In order to configure the testbed on your host automatically, Ansible needs to b
 ## 11. Deploy T0 topology
 Now we're finally ready to deploy the topology for our testbed! Run the following command, depending on what type of EOS image you are using for your setup:
 ```
-    $ cd ~/data/sonic-mgmt/ansible
+    $ cd /data/sonic-mgmt/ansible
     $ ./testbed-cli.sh -t vtestbed.csv -m veos_vtb -k ceos add-topo vms-kvm-t0 password.txt
 ```
 Verify that the cEOS neighbors were created properly:
 ```
     $ docker ps
-    CONTAINER ID        IMAGE                                                 COMMAND                  CREATED              STATUS              PORTS               NAMES
-    575064498cbc        ceosimage:4.23.2F                                     "/sbin/init systemd.…"   About a minute ago   Up About a minute                       ceos_vms6-1_VM0103
-    d71b8970bcbb        debian:jessie                                         "bash"                   About a minute ago   Up About a minute                       net_vms6-1_VM0103
-    3d2e5ecdd472        ceosimage:4.23.2F                                     "/sbin/init systemd.…"   About a minute ago   Up About a minute                       ceos_vms6-1_VM0102
-    28d64c74fa54        debian:jessie                                         "bash"                   About a minute ago   Up About a minute                       net_vms6-1_VM0102
-    0fa067a47c7f        ceosimage:4.23.2F                                     "/sbin/init systemd.…"   About a minute ago   Up About a minute                       ceos_vms6-1_VM0101
-    47066451fa4c        debian:jessie                                         "bash"                   About a minute ago   Up About a minute                       net_vms6-1_VM0101
-    e07bd0245bd9        ceosimage:4.23.2F                                     "/sbin/init systemd.…"   About a minute ago   Up About a minute                       ceos_vms6-1_VM0100
-    4584820bf368        debian:jessie                                         "bash"                   7 minutes ago        Up 7 minutes                            net_vms6-1_VM0100
-    c929c622232a        sonicdev-microsoft.azurecr.io:443/docker-ptf:latest   "/usr/local/bin/supe…"   7 minutes ago        Up 7 minutes                            ptf_vms6-1
+    CONTAINER ID   IMAGE                                                 COMMAND                  CREATED       STATUS       PORTS     NAMES
+    ca4b783aacf9   ceosimage:4.23.2F-1                                   "/sbin/init systemd.…"   4 hours ago   Up 4 hours             ceos_vms6-1_VM0102
+    e16c683d9f3a   ceosimage:4.23.2F-1                                   "/sbin/init systemd.…"   4 hours ago   Up 4 hours             ceos_vms6-1_VM0103
+    58ce9ba18a1d   ceosimage:4.23.2F-1                                   "/sbin/init systemd.…"   4 hours ago   Up 4 hours             ceos_vms6-1_VM0101
+    39983e878e40   ceosimage:4.23.2F-1                                   "/sbin/init systemd.…"   4 hours ago   Up 4 hours             ceos_vms6-1_VM0100
+    eecf4a204e21   debian:jessie                                         "bash"                   4 hours ago   Up 4 hours             net_vms6-1_VM0102
+    64ddfdda1e70   debian:jessie                                         "bash"                   4 hours ago   Up 4 hours             net_vms6-1_VM0100
+    22d86a091383   debian:jessie                                         "bash"                   4 hours ago   Up 4 hours             net_vms6-1_VM0103
+    5b6579bb04f6   debian:jessie                                         "bash"                   4 hours ago   Up 4 hours             net_vms6-1_VM0101
+    419d3b6dfa57   sonicdev-microsoft.azurecr.io:443/docker-ptf:latest   "/usr/local/bin/supe…"   4 hours ago   Up 4 hours             ptf_vms6-1
+    4ddc356c0ce2   docker-sonic-mgmt-falu                                "bash"                   5 hours ago   Up 5 hours   22/tcp    falu-vs
 ```
-## 12. Deploy minigraph on the DUT
+## 12. Run tests
+### 12.1 Run all tests via one command. More details please kindly refer to [Jenkins scripts](https://github.com/Azure/sonic-build-tools/blob/master/scripts/vs/buildimage-vs-image/test.sh) and [Jenkins Console log](https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image/612/console)
+```
+    falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ cd /data/sonic-mgmt/tests
+    falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ ./kvmtest.sh vms-kvm-t0 vlab-01
+```
+### 12.2 Run tests one by one
+#### 12.2.1 Deploy minigraph on the DUT
 Once the topology has been created, we need to give the DUT an initial configuration.
 1. Deploy the `minigraph.xml` to the DUT and save the configuration:
 
@@ -170,10 +178,11 @@ Once the topology has been created, we need to give the DUT an initial configura
     10.0.0.61       4 64600    3205     950        0    0    0 00:00:21     1
     10.0.0.63       4 64600    3204     950        0    0    0 00:00:21     1
 ```
-## 13. Run a Pytest
+#### 12.2.2. Run a Pytest
 Now that the testbed has been fully setup and configured, let's run a simple test to make sure everything is functioning as expected.
 Switch over to the `tests` directory:
 ```
-cd sonic-mgmt/tests
+falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ cd /data/sonic-mgmt/tests
+falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ ./run_tests.sh -n vms-kvm-t0 -d vlab01 -c acl/test_acl.py -f vtestbed.csv -i veos_vtb
 ```
 You're now set up and ready to use the KVM testbed!
