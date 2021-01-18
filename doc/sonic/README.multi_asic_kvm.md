@@ -111,10 +111,13 @@ HOWTO Use Multi-ASIC VS KVM
 ```
 11. How to build a multi-ASIC VS VM image.
 ```
+    sudo bash -c "falu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+    newgrp docker
+    sudo modprobe overlay
     git clone https://github.com/Azure/sonic-buildimage.git
     make init
     echo "NUM_ASIC=6" > ./device/virtual/x86_64-kvm_x86_64-r0/asic.conf
-    make configure PLATFORM=vs
-    make target/sonic-vs.img.gz
+    make configure PLATFORM=vs NOSTRETCH=1
+    make NOSTRETCH=1 target/sonic-vs.img.gz
 ```
 

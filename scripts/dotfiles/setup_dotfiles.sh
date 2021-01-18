@@ -86,7 +86,7 @@ SUDO curl -L https://github.com/openvswitch/ovs/raw/master/utilities/ovs-docker 
 SUDO chmod a+x /usr/bin/ovs-docker
 SUDO groupadd docker
 SUDO usermod -aG docker $USER
-SUDO newgrp docker
+newgrp docker
 SUDO chown "$USER":"$USER" /home/"$USER"/.docker -R
 SUDO chmod g+rwx "$HOME/.docker" -R
 SUDO systemctl enable docker
