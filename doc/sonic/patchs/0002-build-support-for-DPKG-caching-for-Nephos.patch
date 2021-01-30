@@ -1,0 +1,260 @@
+From 4ed82bb81d1c0d88156851af7e7ffac7f22ee0c6 Mon Sep 17 00:00:00 2001
+From: Fanqi Lu <fanqiustc@gmail.com>
+Date: Fri, 29 Jan 2021 05:59:49 +0000
+Subject: [PATCH 2/3] [build]: support for DPKG caching for Nephos
+
+Signed-off-by: Fanqi Lu <fanqiustc@gmail.com>
+---
+ platform/nephos/docker-ptf-nephos.dep         |  9 +++++++++
+ platform/nephos/docker-syncd-nephos-rpc.dep   | 10 ++++++++++
+ platform/nephos/docker-syncd-nephos.dep       | 11 +++++++++++
+ platform/nephos/libsaithrift-dev.dep          | 13 +++++++++++++
+ platform/nephos/nephos-modules.dep            | 10 ++++++++++
+ platform/nephos/one-image.dep                 |  1 +
+ platform/nephos/platform-modules-accton.dep   | 10 ++++++++++
+ platform/nephos/platform-modules-cig.dep      | 17 +++++++++++++++++
+ platform/nephos/platform-modules-ingrasys.dep | 10 ++++++++++
+ platform/nephos/platform-modules-pegatron.dep | 10 ++++++++++
+ platform/nephos/platform-modules-pegatron.mk  |  0
+ platform/nephos/rules.dep                     | 15 +++++++++++++++
+ platform/nephos/sai.dep                       | 17 +++++++++++++++++
+ platform/nephos/sai.mk                        |  2 +-
+ 14 files changed, 134 insertions(+), 1 deletion(-)
+ create mode 100644 platform/nephos/docker-ptf-nephos.dep
+ create mode 100644 platform/nephos/docker-syncd-nephos-rpc.dep
+ create mode 100644 platform/nephos/docker-syncd-nephos.dep
+ create mode 100644 platform/nephos/libsaithrift-dev.dep
+ create mode 100644 platform/nephos/nephos-modules.dep
+ create mode 100644 platform/nephos/one-image.dep
+ create mode 100644 platform/nephos/platform-modules-accton.dep
+ create mode 100644 platform/nephos/platform-modules-cig.dep
+ create mode 100644 platform/nephos/platform-modules-ingrasys.dep
+ create mode 100644 platform/nephos/platform-modules-pegatron.dep
+ mode change 100755 => 100644 platform/nephos/platform-modules-pegatron.mk
+ create mode 100644 platform/nephos/rules.dep
+ create mode 100644 platform/nephos/sai.dep
+
+diff --git a/platform/nephos/docker-ptf-nephos.dep b/platform/nephos/docker-ptf-nephos.dep
+new file mode 100644
+index 00000000..4b1cc80c
+--- /dev/null
++++ b/platform/nephos/docker-ptf-nephos.dep
+@@ -0,0 +1,9 @@
++#DPKG FRK
++DPATH       := $($(DOCKER_PTF_NEPHOS)_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/docker-ptf-nephos.mk platform/nephos/docker-ptf-nephos.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(DPATH))
++
++$(DOCKER_PTF_NEPHOS)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(DOCKER_PTF_NEPHOS)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(DOCKER_PTF_NEPHOS)_DEP_FILES   := $(DEP_FILES)
+diff --git a/platform/nephos/docker-syncd-nephos-rpc.dep b/platform/nephos/docker-syncd-nephos-rpc.dep
+new file mode 100644
+index 00000000..87ef2ce1
+--- /dev/null
++++ b/platform/nephos/docker-syncd-nephos-rpc.dep
+@@ -0,0 +1,10 @@
++
++DPATH       := $($(DOCKER_SYNCD_NEPHOS_RPC)_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) $(PLATFORM_PATH)/docker-syncd-nephos-rpc.mk $(PLATFORM_PATH)/docker-syncd-nephos-rpc.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(DPATH))
++
++$(DOCKER_SYNCD_NEPHOS_RPC)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(DOCKER_SYNCD_NEPHOS_RPC)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(DOCKER_SYNCD_NEPHOS_RPC)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/docker-syncd-nephos.dep b/platform/nephos/docker-syncd-nephos.dep
+new file mode 100644
+index 00000000..7b3e13ed
+--- /dev/null
++++ b/platform/nephos/docker-syncd-nephos.dep
+@@ -0,0 +1,11 @@
++#DPKG FRK
++DPATH       := $($(DOCKER_SYNCD_BASE)_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/docker-syncd-nephos.mk platform/nephos/docker-syncd-nephos.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(DPATH))
++
++$(DOCKER_SYNCD_BASE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(DOCKER_SYNCD_BASE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(DOCKER_SYNCD_BASE)_DEP_FILES   := $(DEP_FILES)
++
++$(eval $(call add_dbg_docker,$(DOCKER_SYNCD_BASE),$(DOCKER_SYNCD_BASE_DBG)))
+diff --git a/platform/nephos/libsaithrift-dev.dep b/platform/nephos/libsaithrift-dev.dep
+new file mode 100644
+index 00000000..2c5d0f85
+--- /dev/null
++++ b/platform/nephos/libsaithrift-dev.dep
+@@ -0,0 +1,13 @@
++#DPKG FRK
++SPATH       := $($(LIBSAITHRIFT_DEV)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/libsaithrift-dev.mk platform/nephos/libsaithrift-dev.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++SMDEP_PATHS := $(SPATH)  $(SPATH)/bm/behavioral-model  $(SPATH)/test/ptf  $(SPATH)/test/saithrift/ctypesgen
++$(foreach path, $(SMDEP_PATHS), $(eval $(path) :=$(filter-out $(SMDEP_PATHS),$(addprefix $(path)/, $(shell cd $(path) &&  git ls-files | grep -Ev " " )))))
++
++$(LIBSAITHRIFT_DEV)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(LIBSAITHRIFT_DEV)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(LIBSAITHRIFT_DEV)_DEP_FILES   := $(DEP_FILES)
++$(LIBSAITHRIFT_DEV)_SMDEP_FILES := $(foreach path, $(SMDEP_PATHS), $($(path)))
++$(LIBSAITHRIFT_DEV)_SMDEP_PATHS := $(SMDEP_PATHS)
++
+diff --git a/platform/nephos/nephos-modules.dep b/platform/nephos/nephos-modules.dep
+new file mode 100644
+index 00000000..7551ada1
+--- /dev/null
++++ b/platform/nephos/nephos-modules.dep
+@@ -0,0 +1,10 @@
++
++MPATH       := $($(NEPHOS_MODULE)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/nephos-modules.mk platform/nephos/nephos-modules.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(MPATH))
++
++$(NEPHOS_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(NEPHOS_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(NEPHOS_MODULE)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/one-image.dep b/platform/nephos/one-image.dep
+new file mode 100644
+index 00000000..154112a8
+--- /dev/null
++++ b/platform/nephos/one-image.dep
+@@ -0,0 +1 @@
++$(SONIC_ONE_IMAGE)_CACHE_MODE  := none
+diff --git a/platform/nephos/platform-modules-accton.dep b/platform/nephos/platform-modules-accton.dep
+new file mode 100644
+index 00000000..6ba16ecf
+--- /dev/null
++++ b/platform/nephos/platform-modules-accton.dep
+@@ -0,0 +1,10 @@
++
++MPATH       := $($(ACCTON_AS7116_54X_PLATFORM_MODULE)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/platform-modules-accton.mk platform/nephos/platform-modules-accton.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(MPATH))
++
++$(ACCTON_AS7116_54X_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(ACCTON_AS7116_54X_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(ACCTON_AS7116_54X_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/platform-modules-cig.dep b/platform/nephos/platform-modules-cig.dep
+new file mode 100644
+index 00000000..c257a332
+--- /dev/null
++++ b/platform/nephos/platform-modules-cig.dep
+@@ -0,0 +1,17 @@
++
++MPATH       := $($(CIG_CS6436_56P_PLATFORM_MODULE)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/platform-modules-cig.mk platform/nephos/platform-modules-cig.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(MPATH))
++
++$(CIG_CS6436_56P_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(CIG_CS6436_56P_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(CIG_CS6436_56P_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
++
++$(CIG_CS6436_54P_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(CIG_CS6436_54P_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(CIG_CS6436_54P_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
++
++$(CIG_CS5435_54P_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(CIG_CS5435_54P_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(CIG_CS5435_54P_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
+diff --git a/platform/nephos/platform-modules-ingrasys.dep b/platform/nephos/platform-modules-ingrasys.dep
+new file mode 100644
+index 00000000..f270f8cb
+--- /dev/null
++++ b/platform/nephos/platform-modules-ingrasys.dep
+@@ -0,0 +1,10 @@
++
++MPATH       := $($(INGRASYS_S9130_32X_PLATFORM_MODULE)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/platform-modules-ingrasys.mk platform/nephos/platform-modules-ingrasys.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(MPATH))
++
++$(INGRASYS_S9130_32X_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(INGRASYS_S9130_32X_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(INGRASYS_S9130_32X_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/platform-modules-pegatron.dep b/platform/nephos/platform-modules-pegatron.dep
+new file mode 100644
+index 00000000..7c3f4f86
+--- /dev/null
++++ b/platform/nephos/platform-modules-pegatron.dep
+@@ -0,0 +1,10 @@
++
++MPATH       := $($(PEGATRON_PORSCHE_PLATFORM_MODULE)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/platform-modules-pegatron.mk platform/nephos/platform-modules-pegatron.dep 
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++DEP_FILES   += $(shell git ls-files $(MPATH))
++
++$(PEGATRON_PORSCHE_PLATFORM_MODULE)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(PEGATRON_PORSCHE_PLATFORM_MODULE)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST)
++$(PEGATRON_PORSCHE_PLATFORM_MODULE)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/platform-modules-pegatron.mk b/platform/nephos/platform-modules-pegatron.mk
+old mode 100755
+new mode 100644
+diff --git a/platform/nephos/rules.dep b/platform/nephos/rules.dep
+new file mode 100644
+index 00000000..5c3ce939
+--- /dev/null
++++ b/platform/nephos/rules.dep
+@@ -0,0 +1,15 @@
++
++include $(PLATFORM_PATH)/sai.dep
++
++include $(PLATFORM_PATH)/nephos-modules.dep
++include $(PLATFORM_PATH)/platform-modules-ingrasys.dep
++include $(PLATFORM_PATH)/platform-modules-cig.dep
++include $(PLATFORM_PATH)/platform-modules-accton.dep
++
++include $(PLATFORM_PATH)/docker-syncd-nephos.dep
++include $(PLATFORM_PATH)/docker-syncd-nephos-rpc.dep
++
++include $(PLATFORM_PATH)/one-image.dep
++
++include $(PLATFORM_PATH)/libsaithrift-dev.dep
++include $(PLATFORM_PATH)/docker-ptf-nephos.dep
+diff --git a/platform/nephos/sai.dep b/platform/nephos/sai.dep
+new file mode 100644
+index 00000000..5abc73a9
+--- /dev/null
++++ b/platform/nephos/sai.dep
+@@ -0,0 +1,17 @@
++
++SPATH       := $($(NEPHOS_SAI)_SRC_PATH)
++DEP_FILES   := $(SONIC_COMMON_FILES_LIST) platform/nephos/sai.mk platform/nephos/sai.dep   
++DEP_FILES   += $(SONIC_COMMON_BASE_FILES_LIST)
++
++# Get the Latest HTTP Header and calculate the SHA value as it is a softlink that always points to LATEST_INT_OCP_SAI_X.X.X
++SAI_FLAGS   := $(shell wget --spider --server-response $($(NEPHOS_SAI)_URL) $($(NEPHOS_SAI_DEV)_URL)  2>&1 \
++			   | grep -Ev -- '--|Date:|x-ms-request-id'|sha256sum|awk '{print $$1}' )
++
++$(NEPHOS_SAI)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(NEPHOS_SAI)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST) $(SAI_FLAGS)
++$(NEPHOS_SAI)_DEP_FILES   := $(DEP_FILES)
++
++$(NEPHOS_SAI_DEV)_CACHE_MODE  := GIT_CONTENT_SHA 
++$(NEPHOS_SAI_DEV)_DEP_FLAGS   := $(SONIC_COMMON_FLAGS_LIST) $(SAI_FLAGS)
++$(NEPHOS_SAI_DEV)_DEP_FILES   := $(DEP_FILES)
++
+diff --git a/platform/nephos/sai.mk b/platform/nephos/sai.mk
+index 8bbeb989..3cf1671c 100644
+--- a/platform/nephos/sai.mk
++++ b/platform/nephos/sai.mk
+@@ -30,7 +30,7 @@ endif
+ ifeq ($(SAI_FROM_LOCAL), y)
+ SONIC_COPY_DEBS += $(NEPHOS_SAI) $(NEPHOS_SAI_DEV)
+ else
+-SONIC_ONLINE_DEBS += $(NEPHOS_SAI) $(NEPHOS_SAI_DEV)
++SONIC_ONLINE_DEBS += $(NEPHOS_SAI)
+ endif
+ $(NEPHOS_SAI_DEV)_DEPENDS += $(NEPHOS_SAI)
+ $(eval $(call add_conflict_package,$(NEPHOS_SAI_DEV),$(LIBSAIVS_DEV)))
+-- 
+2.25.1
+

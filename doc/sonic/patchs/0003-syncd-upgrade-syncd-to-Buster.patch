@@ -1,0 +1,78 @@
+From 884ea00a1f5d6f302de6a6697b69ec353985165d Mon Sep 17 00:00:00 2001
+From: Fanqi Lu <fanqiustc@gmail.com>
+Date: Fri, 29 Jan 2021 13:41:49 +0000
+Subject: [PATCH 3/3] [syncd]: upgrade syncd to Buster
+
+[AI]: Still need to update Nephos SAI using Kernel 5.10 and Debian 10 to
+support buster.
+
+Signed-off-by: Fanqi Lu <fanqiustc@gmail.com>
+---
+ platform/nephos/docker-syncd-nephos-rpc.mk           | 2 +-
+ platform/nephos/docker-syncd-nephos.mk               | 3 ---
+ platform/nephos/docker-syncd-nephos/Dockerfile.j2    | 2 +-
+ platform/nephos/docker-syncd-nephos/supervisord.conf | 4 ++--
+ 4 files changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/platform/nephos/docker-syncd-nephos-rpc.mk b/platform/nephos/docker-syncd-nephos-rpc.mk
+index 39240c19..3684c402 100644
+--- a/platform/nephos/docker-syncd-nephos-rpc.mk
++++ b/platform/nephos/docker-syncd-nephos-rpc.mk
+@@ -12,7 +12,7 @@ endif
+ $(DOCKER_SYNCD_NEPHOS_RPC)_FILES += $(DSSERVE) $(NPX_DIAG)
+ $(DOCKER_SYNCD_NEPHOS_RPC)_LOAD_DOCKERS += $(DOCKER_SYNCD_BASE)
+ SONIC_DOCKER_IMAGES += $(DOCKER_SYNCD_NEPHOS_RPC)
+-SONIC_STRETCH_DOCKERS += $(DOCKER_SYNCD_NEPHOS_RPC)
++
+ ifeq ($(ENABLE_SYNCD_RPC),y)
+ SONIC_INSTALL_DOCKER_IMAGES += $(DOCKER_SYNCD_NEPHOS_RPC)
+ endif
+diff --git a/platform/nephos/docker-syncd-nephos.mk b/platform/nephos/docker-syncd-nephos.mk
+index 146523ec..67bad252 100644
+--- a/platform/nephos/docker-syncd-nephos.mk
++++ b/platform/nephos/docker-syncd-nephos.mk
+@@ -11,9 +11,6 @@ $(DOCKER_SYNCD_BASE)_DBG_DEPENDS += $(SYNCD_DBG) \
+                                 $(LIBSAIMETADATA_DBG) \
+                                 $(LIBSAIREDIS_DBG)
+                                 
+-SONIC_STRETCH_DOCKERS += $(DOCKER_SYNCD_BASE)
+-SONIC_STRETCH_DBG_DOCKERS += $(DOCKER_SYNCD_BASE_DBG)
+-
+ $(DOCKER_SYNCD_BASE)_RUN_OPT += -v /host/warmboot:/var/warmboot
+ $(DOCKER_SYNCD_BASE)_RUN_OPT += -v /var/run/docker-syncd:/var/run/sswsyncd
+ 
+diff --git a/platform/nephos/docker-syncd-nephos/Dockerfile.j2 b/platform/nephos/docker-syncd-nephos/Dockerfile.j2
+index e142fa04..0327b4e7 100755
+--- a/platform/nephos/docker-syncd-nephos/Dockerfile.j2
++++ b/platform/nephos/docker-syncd-nephos/Dockerfile.j2
+@@ -1,4 +1,4 @@
+-FROM docker-config-engine-stretch
++FROM docker-config-engine-buster
+ 
+ ARG docker_container_name
+ RUN [ -f /etc/rsyslog.conf ] && sed -ri "s/%syslogtag%/$docker_container_name#%syslogtag%/;" /etc/rsyslog.conf
+diff --git a/platform/nephos/docker-syncd-nephos/supervisord.conf b/platform/nephos/docker-syncd-nephos/supervisord.conf
+index a05bf7bf..d2ec9bc8 100644
+--- a/platform/nephos/docker-syncd-nephos/supervisord.conf
++++ b/platform/nephos/docker-syncd-nephos/supervisord.conf
+@@ -4,7 +4,7 @@ logfile_backups=2
+ nodaemon=true
+ 
+ [eventlistener:dependent-startup]
+-command=python2 -m supervisord_dependent_startup
++command=python3 -m supervisord_dependent_startup
+ autostart=true
+ autorestart=unexpected
+ startretries=0
+@@ -13,7 +13,7 @@ events=PROCESS_STATE
+ buffer_size=25
+ 
+ [eventlistener:supervisor-proc-exit-listener]
+-command=python2 /usr/bin/supervisor-proc-exit-listener --container-name syncd
++command=python3 /usr/bin/supervisor-proc-exit-listener --container-name syncd
+ events=PROCESS_STATE_EXITED
+ autostart=true
+ autorestart=unexpected
+-- 
+2.25.1
+
