@@ -122,7 +122,10 @@
     21), How to unpatch a directory/file
          patch -R file_unpatch < pf.patch
          patch -R < pf.patch
-          
+         
+    22), Set git commit editer
+         export GIT_EDITOR=vim
+ 
   5, Redis debugging 
     1), GDB
        a), redis-cli info | grep process_id
