@@ -2,9 +2,9 @@
 
 ## 1. Host information 
 ```
-    OS: Ubuntu 20.04 VM, Enabled hypervisor application
+    OS: Ubuntu 20.04 VM, please enabled hypervisor application
     CPU: 4 CPU cores
-    Memory: 8GB memory
+    Memory: 12GB memory
     Disk: 170GB
 ```
 ## 2. Download cEOS image
@@ -16,7 +16,7 @@
 3. Import the cEOS image, please use **ceosimage:4.23.2F** as **[REPOSITORY[:TAG]]** when import docker image.
 ```
     $ mkdir -p ~/veos-vm/images/
-    $ docker import cEOS64-lab-4.25.1F.tar.xz ceosimage:4.23.2F
+    $ docker import cEOS64-lab-4.23.6M.tar.xz ceosimage:4.23.2F
     $ docker images
     REPOSITORY                                     TAG                 IMAGE ID            CREATED             SIZE
     ceosimage                                      4.23.2F             d53c28e38448        2 hours ago         1.82GB
@@ -29,11 +29,12 @@
     $ sudo usermod -aG libvirt $USER
     $ sudo usermod -aG kvm $USER
 ```
-## 4. Download [docker-sonic-mgmt image](https://sonic-jenkins.westus2.cloudapp.azure.com/job/bldenv/job/docker-sonic-mgmt/lastSuccessfulBuild/artifact/sonic-buildimage/target/docker-sonic-mgmt.gz) and [sonic-vs image](https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image/lastSuccessfulBuild/artifact/target/sonic-vs.img.gz) 
+## 4. Download [sonic-vs image](https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image/lastSuccessfulBuild/artifact/target/sonic-vs.img.gz)
+We can check the daily regression test results on [URL](https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image), and the console output can be found after selecting a successful build. 
+We also can find [Jenkinsfile](https://github.com/Azure/sonic-build-tools/blob/master/jenkins/vs/buildimage-vs-image/Jenkinsfile) and [test script](https://github.com/Azure/sonic-build-tools/tree/master/scripts/vs/buildimage-vs-image)
 ```
     $ mkdir -p ~/sonic-vm/images
     $ cd ~/sonic-vm/images
-    $ wget https://sonic-jenkins.westus2.cloudapp.azure.com/job/bldenv/job/docker-sonic-mgmt/lastSuccessfulBuild/artifact/sonic-buildimage/target/docker-sonic-mgmt.gz
     $ wget https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image/lastSuccessfulBuild/artifact/target/sonic-vs.img.gz
 ```
 ## 5. Unzip `sonic-vs.img.gz` image
@@ -41,13 +42,23 @@
     $ cd ~/sonic-vm/images
     $ gunzip sonic-vs.img.gz
 ```
-## 6. Load `docker-sonic-mgmt.gz` image
+## 6. Load `sonic-mgmt` and `ptf` docker images
+### 6.1 Option 1, load local docker images, please use **sonicdev-microsoft.azurecr.io:443/docker-sonic-mgmt:latest** as **[REPOSITORY[:TAG]]**
 ```
     $ cd ~/sonic-vm/images
     $ docker load < docker-sonic-mgmt.gz
+    $ docker load < docker-ptf.gz
+```
+### 6.2 Option 2, pull dcker images from remote.
+```
+    $ cd ~/sonic-vm/images
+    $ docker pull sonicdev-microsoft.azurecr.io:443/docker-sonic-mgmt:latest
+    $ docker pull sonicdev-microsoft.azurecr.io:443/docker-ptf:latest
+    $ docker save sonicdev-microsoft.azurecr.io:443/docker-sonic-mgmt:latest | gzip > docker-sonic-mgmt.gz
+    $ docker save sonicdev-microsoft.azurecr.io:443/docker-ptf:latest | gzip > docker-ptf.gz
 ```
 ## 7. Clone [sonic-mgmt](https://github.com/Azure/sonic-mgmt) and initialize the management bridge network
-
+Please check `sonic-mgmt` [regression test result](https://sonic-jenkins.westus2.cloudapp.azure.com/job/vs/job/buildimage-vs-image-test/) and checkout the stable version.
 ```
     $ cd ~
     $ git clone https://github.com/Azure/sonic-mgmt
@@ -185,4 +196,3 @@ Switch over to the `tests` directory:
 falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ cd /data/sonic-mgmt/tests
 falu@4ddc356c0ce2:/data/sonic-mgmt/tests$ ./run_tests.sh -n vms-kvm-t0 -d vlab01 -c acl/test_acl.py -f vtestbed.csv -i veos_vtb
 ```
-You're now set up and ready to use the KVM testbed!
