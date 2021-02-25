@@ -1,0 +1,52 @@
+############# config ##################
+#
+set base_path    /mnt/mirror/debian
+#
+# set mirror_path  $base_path/mirror
+# set skel_path    $base_path/skel
+# set var_path     $base_path/var
+# set cleanscript $var_path/clean.sh
+# set defaultarch  <running host architecture>
+# set postmirror_script $var_path/postmirror.sh
+# set run_postmirror 0
+set nthreads     20
+set _tilde 0
+#
+############# end config ##############
+## Debian Stretch
+# BASE
+deb [arch=amd64] http://ftp.cn.debian.org/debian/ buster main contrib non-free
+deb-src [arch=amd64] http://ftp.cn.debian.org/debian/ buster main contrib non-free
+deb [arch=amd64] http://ftp.cn.debian.org/debian-security/ buster/updates main contrib non-free
+deb-src [arch=amd64] http://ftp.cn.debian.org/debian-security/ buster/updates main contrib non-free
+deb [arch=amd64] http://ftp.cn.debian.org/debian buster-backports main
+
+#deb [arch=amd64] http://ftp2.cn.debian.org/debian/ buster main contrib non-free
+#deb-src [arch=amd64] http://ftp2.cn.debian.org/debian/ buster main contrib non-free
+#deb [arch=amd64] http://ftp2.cn.debian.org/debian-security/ buster/updates main contrib non-free
+#deb-src [arch=amd64] http://ftp2.cn.debian.org/debian-security/ buster/updates main contrib non-free
+#deb [arch=amd64] http://ftp2.cn.debian.org/debian buster-backports main
+
+## Debian Jessie
+# BASE
+#deb-amd64 http://ftp2.de.debian.org/debian/ jessie main
+#deb-amd64 http://security.debian.org/debian-security jessie/updates main
+#deb-amd64 http://ftp2.de.debian.org/debian/ jessie-updates main
+
+## Ubuntu 16.04
+# BASE
+#deb http://archive.ubuntu.com/ubuntu/ xenial main restricted
+#deb http://archive.ubuntu.com/ubuntu/ xenial-updates main restricted
+#deb http://archive.ubuntu.com/ubuntu/ xenial universe
+#deb http://archive.ubuntu.com/ubuntu/ xenial-updates universe
+#deb http://archive.ubuntu.com/ubuntu/ xenial multiverse
+#deb http://archive.ubuntu.com/ubuntu/ xenial-updates multiverse
+#deb http://archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse
+#deb http://security.ubuntu.com/ubuntu/ xenial-security main restricted
+#deb http://security.ubuntu.com/ubuntu/ xenial-security universe
+#deb http://security.ubuntu.com/ubuntu/ xenial-security multiverse
+
+# Cleanup old packages
+#clean http://ftp2.de.debian.org/debian
+#clean http://archive.ubuntu.com/ubuntu
+#clean http://security.ubuntu.com/ubuntu
