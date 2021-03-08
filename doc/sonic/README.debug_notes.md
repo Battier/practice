@@ -1,4 +1,4 @@
-# VS Notes
+# VS KVM Notes
 #
 
 # Table of Contents
@@ -24,6 +24,7 @@
   * [6 Logging](#6-logging)
     * [6.1 docker log](#61-docker-log)
     * [6.2 syslog](#62-syslog)
+  * [7 GNS3](#7-gns3)
 
 # 1 Steps to build VS image
 ```
@@ -168,4 +169,6 @@ Here is [Database Mapping](https://github.com/Azure/SONiC/blob/master/doc/databa
 
     admin@sonic:~$ show logging l2mcd
 ```
+# 7 GNS3
+https://plvision.eu/rd-lab/blog/sdn/sonic-network-os-configuration
 
