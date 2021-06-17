@@ -39,7 +39,7 @@
 # 2 Setup VS KVM
 ## 2.1 Un-compress image
 ```
-    falu@falu-ubuntu:~/ws/kvm$ gunzip sonic-multiasic-vs.img.gz
+    falu@falu-ubuntu:~/ws/kvm$ gunzip sonic-vs.img.gz
 ```
 ## 2.2 XML configuration file for virsh
 Set the VM image location and replace the invalid QEMU option '-redir' in XML file sonic.xml under 'platform/vs'
